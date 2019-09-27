@@ -31,31 +31,35 @@ public class gaussian {
 		}
 		return sol;
 	}
-	public static void SPPFwdElimination(float[][] coeff, float[] constants, int[] indices) {
+	public static int[] SPPFwdElimination(float[][] coeff, float[] constants) {
 		int n = coeff.length;
-		float[] scaling = new float[coeff.length];
-		float sum;
+		float[] scaling = new float[n];
+		int[] indices = new int[n];
+		for(int i=0; i<n; i++) {
+			indices[i] = i;
+		}
 		float smax = 0;
 		for(int i=0; i<n; i++) {
-			sum = 0;
+			smax = 0;
 			for(int j=0; j<n; j++) {
-			//smax = max(smax, | coeff[i][j])
+				//smax = max(smax, | coeff[i][j])
+				if(smax < Math.abs(coeff[i][j])) {
+					smax = coeff[i][j];
+				}
 			}
 			scaling[i] = smax;
 		}
 		for(int k=0; k<(n-1); k++) {
 			float rmax = 0;
 			int maxInd = k;
-			
 			for(int i=k; i<n; i++) {
-				//r = |coeff[indices[i]][k] / scaling[ind[i]]
-				int r = 0;
+				float r = Math.abs(coeff[indices[i]][k] / scaling[indices[i]]);
 				if(r>rmax) {
 					rmax = r;
 					maxInd = i;
 				}	
 			}
-			swap(indices[maxInd], indices[k]);
+			swap(indices, k, maxInd);
 			float mult;
 			for(int i=k+1; i<n; i++) {
 				mult = coeff[indices[i]][k] / coeff[indices[k]][k];
@@ -66,7 +70,7 @@ public class gaussian {
 				constants[indices[i]] = constants[indices[i]] - mult * constants[indices[k]];
 			}
 		}
-		
+		return indices;
 	}
 	public static float[] SPPBackSubst(float[][] coeff, float[] constants, int[] indices) {
 		int n = coeff.length;
@@ -82,13 +86,10 @@ public class gaussian {
 		}
 		return sol;
 	}
-	private static void swap(int i, int j) {
-		// TODO Auto-generated method stub
-		//test stub for differences
-		//
-		//
-		//
-		//
+	private static void swap(int[] indices, int k, int maxInd) {
+		int temp = indices[k];
+		indices[k] = indices[maxInd];
+		indices[maxInd] = temp;
 	}
 	
 	private static Object[] readFile(String fileName) {
@@ -154,8 +155,7 @@ public class gaussian {
 		float[] solution;
 		
 		if(runSPP) {
-			int indices[] = null;
-			SPPFwdElimination(coeff, constants, indices);
+			int[] indices = SPPFwdElimination(coeff, constants);
 			solution = SPPBackSubst(coeff, constants, indices);
 		}
 		else {
