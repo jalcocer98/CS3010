@@ -20,7 +20,7 @@ public class gaussian {
 	public static float[] BackSubst(float[][] coeff, float[] constants) {
 		int n = coeff.length;
 		float[] sol = new float[n];
-		sol[n] = constants[n] / coeff[n][n];
+		sol[n-1] = constants[n-1] / coeff[n-1][n-1];
 		float sum = 0;
 		for(int i=n-2; i>-1; i--) {
 			sum = constants[i];
@@ -89,14 +89,16 @@ public class gaussian {
 		//
 		//
 		//
-		
 	}
 	
-	private static void readFile(String fileName, float[][] coeff, float[] constants) {
+	private static Object[] readFile(String fileName) {
+		Object[] equations = new Object[2];
 		try {
 			Scanner input = new Scanner(new File(fileName));
 			int n = input.nextInt();
-			coeff = new float[n][n];
+			float[][] coeff = new float[n][n];
+			float[] constants = new float[n];
+			
 			while(input.hasNext()) {
 				for(int i=0; i<n; i++) {
 					for(int j=0; j<n; j++) {
@@ -107,17 +109,24 @@ public class gaussian {
 					constants[i] = input.nextFloat();
 				}
 			}
+			equations[0] = coeff;
+			equations[1] = constants;
 		}catch(FileNotFoundException e) {
 			System.out.println("Specified file not found. Please restart the program and try again");
 			System.exit(0);
 		}
+		return equations;
 	}
 	private static void writeFile(String fileName, float[] sol) {
 		try {
+			String[] fileString = fileName.split(".");
+			System.out.println(fileName);
+			System.out.println(fileString.length);
 			FileWriter out = new FileWriter(fileName + ".sol");
 			for(int i=0; i<sol.length; i++) {
 				out.write(sol[i] + " ");
 			}
+			out.close();
 		}catch (IOException e) {
 			
 		}
@@ -139,12 +148,11 @@ public class gaussian {
 		else {
 			fileName = args[0];
 		}
-		
-		float[][] coeff = null;
-		float[] constants = null;
-		readFile(fileName, coeff, constants);
-		
+		Object[] equations = readFile(fileName);
+		float[][] coeff = (float[][])equations[0];
+		float[] constants  = (float[])equations[1];
 		float[] solution;
+		
 		if(runSPP) {
 			int indices[] = null;
 			SPPFwdElimination(coeff, constants, indices);
