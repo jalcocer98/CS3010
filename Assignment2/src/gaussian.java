@@ -75,12 +75,12 @@ public class gaussian {
 	public static float[] SPPBackSubst(float[][] coeff, float[] constants, int[] indices) {
 		int n = coeff.length;
 		float[] sol = new float[n];
-		sol[n] = constants[indices[n]] / coeff[indices[n]][n];
+		sol[n-1] = constants[indices[n-1]] / coeff[indices[n-1]][n-1];
 		float sum = 0;
 		for(int i=n-2; i>-1; i--) {
 			sum = constants[indices[i]];
-			for(int j=i+1; j<n; i++) {
-				sum = sum - coeff[indices[i]][i] * sol[j];
+			for(int j=i+1; j<n; j++) {
+				sum = sum - coeff[indices[i]][j] * sol[j];
 			}
 			sol[i] = sum / coeff[indices[i]][i];
 		}
@@ -91,7 +91,6 @@ public class gaussian {
 		indices[k] = indices[maxInd];
 		indices[maxInd] = temp;
 	}
-	
 	private static Object[] readFile(String fileName) {
 		Object[] equations = new Object[2];
 		try {
@@ -120,12 +119,16 @@ public class gaussian {
 	}
 	private static void writeFile(String fileName, float[] sol) {
 		try {
-			String[] fileString = fileName.split(".");
-			System.out.println(fileName);
-			System.out.println(fileString.length);
-			FileWriter out = new FileWriter(fileName + ".sol");
+			int regexPoint = fileName.indexOf('.');
+			String newFileName = fileName.substring(0, regexPoint);
+			FileWriter out = new FileWriter(newFileName + ".sol");
 			for(int i=0; i<sol.length; i++) {
-				out.write(sol[i] + " ");
+				if(sol[i] == 0) {
+					out.write("0.0 ");
+				}
+				else {
+					out.write(sol[i] + " ");
+				}
 			}
 			out.close();
 		}catch (IOException e) {
@@ -133,6 +136,10 @@ public class gaussian {
 		}
 	}
 	public static void main(String[] args) {
+		if(args.length == 0) {
+			System.out.println("You must specify a .lin file to use. Please restart the program and do so");
+			System.exit(0);
+		}
 		boolean runSPP = false;
 		String fileName;
 		String modifier;
