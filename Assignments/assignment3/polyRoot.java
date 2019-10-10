@@ -1,14 +1,22 @@
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Scanner;
 
-public class PolynomialRoots {
+public class polyRoot {
+	private static boolean success = false;
+	private static int iterations = 0;
+	private static String fileName = null;
+	private final static float EPS = Float.MIN_VALUE;
+	private final static float DELTA = (float)0.0001;
 	public static void main(String[] args) {
-		runAlgorithm(args);
+		float root = runAlgorithm(args);
+		writeFile(fileName, root);
 	}
-	private static float secant(float[] coeff, float a, float b, int maxIter, float eps) {
+	private static float secant(float[] coeff, float a, float b, int maxIter) {
 		float fa = evaluateFunction(coeff, a);
 		float fb = evaluateFunction(coeff, b);
 		
@@ -36,40 +44,52 @@ public class PolynomialRoots {
 			fb = fa;
 			delta = delta*fa;
 			
-			if(Math.abs(delta) < eps) {
+			if(Math.abs(delta) < EPS) {
 				System.out.println("Algorithm has converged after " + i + " iterations!");
+				iterations = i;
+				success = true;
 				return a;
 			}
 			a = a - delta;
 			fa = evaluateFunction(coeff, a);
 		}
 		System.out.println("Maximum number of iterations reached!");
+		iterations = maxIter;
+		success = false;
 		return a;
 	}
-	private static float newton(float[] coeff, float[] derivCoeff, float x, int maxIter, float eps, float delta) {
+	private static float newton(float[] coeff, float[] derivCoeff, float x, int maxIter) {
 		float fx = evaluateFunction(coeff, x);
 		for(int i=0; i<maxIter; i++) {
 			float fd = evaluateFunction(derivCoeff, x);
-			if(Math.abs(fd) < delta) {
+			if(Math.abs(fd) < DELTA) {
 				System.out.println("Small slope!");
+				iterations = i;
+				success = false;
 				return x;
 			}
 			float d = fx / fd;
 			x = x - d;
 			fx = evaluateFunction(coeff, x);
-			if(Math.abs(d) < eps ) {
+			if(Math.abs(d) < EPS) {
 				System.out.println("Algorithm has converged after "+ i + " iterations!");
+				iterations = i;
+				success = true;
 				return x;
 			}
 		}
 		System.out.println("Max iterations reached without convergence...");
+		iterations = maxIter;
+		success = false;
 		return x;
 	}
-	private static float bisection(float[] coeff, float a, float b, int maxIter, float eps) {
+	private static float bisection(float[] coeff, float a, float b, int maxIter) {
 		float fa = evaluateFunction(coeff, a);
 		float fb = evaluateFunction(coeff, b);
 		if((fa*fb) >= 0) {
 			System.out.println("Inadequate values for a and b");
+			iterations = 0;
+			success = false;
 			return (float) -1.0;
 		}
 		float c = 0;
@@ -78,8 +98,10 @@ public class PolynomialRoots {
 			error = error / 2;
 			c = a + error;
 			float fc = evaluateFunction(coeff, c);
-			if(Math.abs(error) < eps || fc == 0) {
+			if(Math.abs(error) < EPS || fc == 0) {
 				System.out.println("Algorithm has converged after " + i + " iterations!");
+				iterations = i;
+				success = true;
 				return c;
 			}
 			if((fa*fc) < 0) {
@@ -92,9 +114,11 @@ public class PolynomialRoots {
 			}
 		}
 		System.out.println("Max iterations reached without convergence...");
+		iterations = maxIter;
+		success = false;
 		return c;
 	}
-	private static float hybrid(float[] coeff, float a, float b, int maxIter, float eps, float delta) {
+	private static float hybrid(float[] coeff, float a, float b, int maxIter) {
 		float fa = evaluateFunction(coeff, a);
 		float fb = evaluateFunction(coeff, b);
 		if((fa*fb) >= 0) {
@@ -108,8 +132,10 @@ public class PolynomialRoots {
 			error = error / 2;
 			c = a + error;
 			float fc = evaluateFunction(coeff, c);
-			if(Math.abs(error) < eps || fc == 0) {
+			if(Math.abs(error) < EPS || fc == 0) {
 				System.out.println("Algorithm has converged after " + counter + " iterations!");
+				iterations = counter;
+				success = true;
 				return c;
 			}
 			if((fa*fc) < 0) {
@@ -124,6 +150,8 @@ public class PolynomialRoots {
 		}
 		if(counter >= maxIter) {
 			System.out.println("Max iterations reached without convergence...");
+			iterations = maxIter;
+			success = false;
 			return c;
 		}
 		else {
@@ -131,19 +159,25 @@ public class PolynomialRoots {
 			float[] derivCoeff = derivePolynomial(coeff);
 			for(int i=counter; i<maxIter; i++) {
 				float fd = evaluateFunction(derivCoeff, c);
-				if(Math.abs(fd) < delta) {
+				if(Math.abs(fd) < DELTA) {
 					System.out.println("Small slope!");
+					iterations = i;
+					success = false;
 					return c;
 				}
 				float d = fx / fd;
 				c = c - d;
 				fx = evaluateFunction(coeff, c);
-				if(Math.abs(d) < eps ) {
+				if(Math.abs(d) < EPS ) {
+					iterations = i;
+					success = true;
 					System.out.println("Algorithm has converged after "+ i + " iterations!");
 					return c;
 				}
 			}
 			System.out.println("Max iterations reached without convergence...");
+			iterations = maxIter;
+			success = false;
 			return c;
 		}
 	}
@@ -162,117 +196,131 @@ public class PolynomialRoots {
 		return result;
 	}
 	//add exception handling for improper file format
-	private static void runAlgorithm(String[] args) {
-		if(args == null) {
+	private static float runAlgorithm(String[] args) {
+		if(args.length == 0) {
 			System.out.println("No parameteters detected. \nPlease restart the program and "
 								+ "specify the appropriate parameters.");
 			System.exit(0);
 		}
 		float initP = 0;
 		int maxIter = 10000;
-		
+		float[] coeff = null;
+		float root = -1000000;
 		switch(args[0]) {
-			case "newt":
-				if(args[0].length() < 3) {
+			case "-newt":
+				if(args.length < 3) {
 					System.out.println("Not enough information provided. \nPlease restart the program and"
 										+ " specify all the information needed.");
 					System.exit(0);
 				}
-				if(args[0].length() > 5) {
+				if(args.length > 5) {
 					System.out.println("Too much information specfied for -newt mode.\nPlease restart the program"
 										+ " with the appropriate amount of information.");
 					System.exit(0);
 				}
-				if(args[0].length() == 3) {
+				if(args.length == 3) {
 					float x = Float.parseFloat(args[1]);
-					float coeff[] = readFile(args[2]);
+					coeff = readFile(args[2]);
+					fileName = args[2];
 					float derivCoeff[] = derivePolynomial(coeff);
-					newton(coeff, derivCoeff, x, maxIter, (float)0.001, (float)0.0001);
+					root = newton(coeff, derivCoeff, x, maxIter);
 				}
-				if(args[0].length() == 5) {
-					if(!args[1].equals("-maxIt") || (args[1].equals("-maxIt") && args.length == 4)) {
+				if(args.length == 5) {
+					if(!args[1].equals("-maxIter") || (args[1].equals("-maxIter") && args.length == 4)) {
 						System.out.println("Formatting incorrect. \nPlease restart the program and format the"
 											+ " information properly.");
 						System.exit(0);
 					}
 					maxIter = Integer.parseInt(args[2]);
 					float x = Float.parseFloat(args[3]);
-					float coeff[] = readFile(args[4]);
+					coeff = readFile(args[4]);
+					fileName = args[4];
 					float derivCoeff[] = derivePolynomial(coeff);
-					newton(coeff, derivCoeff, x, maxIter, (float)0.1, (float)0.1);
+					root = newton(coeff, derivCoeff, x, maxIter);
 				}
 				break;
-			case "sec":
-				if(args[0].length() < 4) {
+			case "-sec":
+				if(args.length < 4) {
 					System.out.println("Not enough information provided.\nPlease restart the program and"
 							+ " specify all the information needed.");
 					System.exit(0);
 				}
-				if(args[0].length() > 6) {
-					System.out.println("Too much information specfied for -newt mode.\nPlease restart the program"
+				if(args.length > 6) {
+					System.out.println("Too much information specfied for -sec mode.\nPlease restart the program"
 										+ " with the appropriate amount of information.");
 					System.exit(0);
 				}
-				if(args[0].length() == 4) {
+				if(args.length == 4) {
 					float a = Float.parseFloat(args[1]);
 					float b = Float.parseFloat(args[2]);
-					float coeff[] = readFile(args[3]);
-					secant(coeff, a, b, maxIter, (float)0.001);
+					coeff = readFile(args[3]);
+					fileName = args[3];
+					root = secant(coeff, a, b, maxIter);
 				}
-				if(args[0].length() == 6) {
-					if(!args[1].equals("-maxIt") || (args[1].equals("-maxIt") && args.length == 5)) {
+				if(args.length == 6) {
+					if(!args[1].equals("-maxIter") || (args[1].equals("-maxIter") && args.length == 5)) {
 						System.out.println("Formatting incorrect. \nPlease restart the program and format the"
 											+ " information properly.");
 						System.exit(0);
 					}
 					maxIter = Integer.parseInt(args[2]);
-					float x = Float.parseFloat(args[3]);
-					float coeff[] = readFile(args[4]);
+					float a = Float.parseFloat(args[3]);
+					float b = Float.parseFloat(args[4]);
+					coeff = readFile(args[5]);
+					fileName = args[5];
+					root = secant(coeff, a, b, maxIter);
 				}
 				break;
 			default:
-				if(args[0].length() < 3) {
+				if(args.length < 3) {
 					System.out.println("Not enough information provided.\nPlease restart the program and"
 							+ "specify all the information needed.");
 					System.exit(0);
 				}
-				if(args[0].length() > 5) {
-					System.out.println("Too much information specfied for -newt mode.\nPlease restart the program"
+				if(args.length > 5) {
+					System.out.println("Too much information specfied for bisection mode.\nPlease restart the program"
 										+ " with the appropriate amount of information.");
 					System.exit(0);
 				}
-				if(args[0].length() == 3) {
-					float x = Float.parseFloat(args[1]);
-					float coeff[] = readFile(args[2]);
-					float derivCoeff[] = derivePolynomial(coeff);
-					newton(coeff, derivCoeff, x, maxIter, (float)0.001, (float)0.0001);
+				if(args.length == 3) {
+					float a = Float.parseFloat(args[0]);
+					float b = Float.parseFloat(args[1]);
+					coeff = readFile(args[2]);
+					fileName = args[2];
+					root = bisection(coeff, a, b, maxIter);
 				}
-				if(args[0].length() == 5) {
-					if(!args[1].equals("-maxIt") || (args[1].equals("-maxIt") && args.length == 4)) {
+				if(args.length == 5) {
+					if(!args[0].equals("-maxIter") || (args[0].equals("-maxIter") && args.length == 4)) {
 						System.out.println("Formatting incorrect. \nPlease restart the program and format the"
 											+ " information properly.");
 						System.exit(0);
 					}
-					maxIter = Integer.parseInt(args[2]);
-					float x = Float.parseFloat(args[3]);
-					float coeff[] = readFile(args[4]);
-					float derivCoeff[] = derivePolynomial(coeff);
-					newton(coeff, derivCoeff, x, maxIter, (float)0.1, (float)0.1);
+					maxIter = Integer.parseInt(args[1]);
+					float a = Float.parseFloat(args[2]);
+					float b = Float.parseFloat(args[3]);
+					coeff = readFile(args[4]);
+					fileName = args[4];
+					root = bisection(coeff, a, b, maxIter);
 				}
-				break;
-				
+				break;	
 		}
-		
+		return root;
 	}
 	private static void writeFile(String fileName, float x) {
 		try {
 			int regexPoint = fileName.indexOf('.');
 			String newFileName = fileName.substring(0, regexPoint);
 			FileWriter out = new FileWriter(newFileName + ".sol");
-			out.write((int)x);
+			out.write("root:" + String.valueOf(x) + " iterations: " + iterations + " outcome: ");
+			if(success) {
+				out.write("succes");
+			}
+			else {
+				out.write("failure");
+			}
 			out.close();
 		}catch (IOException e) {
-			
+			System.out.println(e.getStackTrace());
 		}
 	}
 	private static float[] readFile(String fileName) {
